@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS Bodega</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        body { background: #121212; color: white; font-family: sans-serif; padding: 20px; }
+        .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #333; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; background: #2c2c2c; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; }
+        .btn-venta { background: #28a745; margin-top: 10px; }
+        .producto { border-bottom: 1px solid #333; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <h2>🧾 POS Bodega en Vivo</h2>
+
+    <div class="card">
+        <label>Tasa del día (Bs.):</label>
+        <input type="number" id="tasaInput" step="0.01" placeholder="Ej: 36.50">
+        <button onclick="guardarTasa()">Actualizar Tasa</button>
+    </div>
+
+    <div class="card">
+        <h3>📦 Nuevo Producto</h3>
+        <input type="text" id="nombreP" placeholder="Nombre">
+        <input type="number" id="precioP" step="0.01" placeholder="Precio USD $">
+        <input type="number" id="stockP" placeholder="Cantidad Inicial">
+        <button onclick="agregarProducto()" style="background:#6610f2">Guardar Producto</button>
+    </div>
+
+    <div class="card">
+        <h3>🛒 Inventario</h3>
+        <div id="lista">Cargando...</div>
+    </div>
+
+    <script>
+        // 👇 AQUÍ PEGA TUS DATOS DE LA FOTO 1001062712.jpg
+        const firebaseConfig = {
+            apiKey: "AIzaSyDbbeyN6DJ2LTbP04x6MJ2CeZ...",
+            authDomain: "pos-bodega-a6a46.firebaseapp.com",
+            projectId: "pos-bodega-a6a46",
+            storageBucket: "pos-bodega-a6a46.firebasestorage.app",
+            messagingSenderId: "899759487177",
+            appId: "1:899759487177:web:b1eec7a5accde...",
+            measurementId: "G-M7ZHTQS4KT"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let tasa = 1;
+
+        // Leer tasa en tiempo real
+        db.collection("config").doc("moneda").onSnapshot(doc => {
+            if(doc.exists) {
+                tasa = doc.data().valor;
+                document.getElementById("tasaInput").value = tasa;
+            }
+        });
+
+        async function guardarTasa() {
+            const v = document.getElementById("tasaInput").value;
+            await db.collection("config").doc("moneda").set({ valor: parseFloat(v) });
+            alert("Tasa actualizada para todos");
+        }
+
+        async function agregarProducto() {
+            const n = document.getElementById("nombreP").value;
+            const p = document.getElementById("precioP").value;
+            const s = document.getElementById("stockP").value;
+            if(!n || !p || !s) return alert("Llena todo");
+            
+            await db.collection("productos").add({
+                nombre: n,
+                precio: parseFloat(p),
+                stock: parseInt(s)
+            });
+            alert("Agregado!");
+            document.getElementById("nombreP").value = "";
+            document.getElementById("precioP").value = "";
+            document.getElementById("stockP").value = "";
+        }
+
+        // Leer productos
+        db.collection("productos").onSnapshot(snap => {
+            const lista = document.getElementById("lista");
+            lista.innerHTML = "";
+            snap.forEach(doc => {
+                const prod = doc.data();
+                const precioBs = (prod.precio * tasa).toFixed(2);
+                lista.innerHTML += `
+                    <div class="producto">
+                        <div>
+                            <b>${prod.nombre}</b><br>
+                            $${prod.precio} | Bs. ${precioBs}<br>
+                            Stock: ${prod.stock}
+                        </div>
+                        <button class="btn-venta" style="width:80px" onclick="vender('${doc.id}', ${prod.stock})">Vender</button>
+                    </div>
+                `;
+            });
+        });
+
+        async function vender(id, stockActual) {
+            if(stockActual <= 0) return alert("Sin stock");
+            await db.collection("productos").doc(id).update({ stock: stockActual - 1 });
+        }
+    </script>
+</body>
+</html>
