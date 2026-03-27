@@ -3,37 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Bodega</title>
+    <title>POS Bodega Profesional</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
-        body { background: #121212; color: white; font-family: sans-serif; padding: 20px; }
-        .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #333; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; background: #2c2c2c; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        .btn-venta { background: #28a745; margin-top: 10px; }
-        .producto { border-bottom: 1px solid #333; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
-        .precio-bs { color: #28a745; font-weight: bold; font-size: 1.1em; }
+        body { background: #121212; color: white; font-family: sans-serif; margin: 0; padding-bottom: 70px; }
+        .tabs { display: flex; background: #1e1e1e; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #333; }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: none; color: #888; font-weight: bold; cursor: pointer; }
+        .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; }
+        .content { padding: 20px; display: none; }
+        .content.active { display: block; }
+        .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #333; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; background: #2c2c2c; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .btn-blue { background: #007bff; color: white; }
+        .btn-green { background: #28a745; color: white; }
+        .btn-red { background: #dc3545; color: white; margin-top: 5px; }
+        .item-lista { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #333; }
+        .total-box { font-size: 1.2em; border-top: 2px solid #007bff; padding-top: 10px; margin-top: 10px; }
+        .badge { background: #333; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; }
     </style>
 </head>
 <body>
 
-    <h2>🧾 POS Bodega en Vivo</h2>
-
-    <div class="card">
-        <label>Tasa del día (Bs.):</label>
-        <input type="number" id="tasaInput" step="0.01" placeholder="Ej: 36.50">
-        <button onclick="guardarTasa()">Actualizar Tasa</button>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab('vender')">VENTA</button>
+        <button class="tab-btn" onclick="openTab('inventario')">STOCK</button>
+        <button class="tab-btn" onclick="openTab('tasa')">TASA</button>
+        <button class="tab-btn" onclick="openTab('historial')">CIERRE</button>
     </div>
 
-    <div class="card">
-        <h3>📦 Nuevo Producto</h3>
-        <input type="text" id="nombreP" placeholder="Nombre">
-        <input type="number" id="precioP" step="0.01" placeholder="Precio USD $">
-        <input type="number" id="stockP" placeholder="Cantidad Inicial">
-        <button onclick="agregarProducto()" style="background:#6610f2">Guardar Producto</button>
+    <div id="vender" class="content active">
+        <div class="card">
+            <h3>🛒 Nueva Venta</h3>
+            <label>Seleccionar Producto:</label>
+            <select id="selectProducto" onchange="agregarAlCarrito()"></select>
+            
+            <div id="carritoItems"></div>
+            
+            <div class="total-box">
+                <div>Total $: <span id="totalUSD">0.00</span></div>
+                <div style="color: #28a745;">Total Bs: <span id="totalBS">0.00</span></div>
+            </div>
+            <button class="btn-green" onclick="finalizarVenta()" style="margin-top:20px">REGISTRAR VENTA</button>
+            <button class="btn-red" onclick="vaciarCarrito()">Vaciar Carrito</button>
+        </div>
     </div>
 
+    <div id="inventario" class="content">
+        <div class="card">
+            <h3>📦 Agregar/Editar Producto</h3>
+            <input type="hidden" id="editId">
+            <input type="text" id="nombreP" placeholder="Nombre (Ej: Arroz 1kg)">
+            <input type="number" id="precioP" step="0.01" placeholder="Precio USD $">
+            <input type="number" id="stockP" placeholder="Stock Actual">
+            <button class="btn-blue" id="btnGuardar" onclick="guardarProducto()">Guardar Producto</button>
+        </div>
+        <h3>📋 Lista de Artículos</h3>
+        <div id="listaStock"></div>
+    </div>
+
+    <div id="tasa" class="content">
+        <div class="card">
+            <h3>💹 Configurar Tasa</h3>
+            <label>Tasa actual en Bs:</label>
+            <input type="number" id="tasaInput" step="0.01">
+            <button class="btn-blue" onclick="guardarTasa()">Actualizar Tasa</button>
+        </div>
+    </div>
+
+    <div id="historial" class="content">
+        <h3>📄 Ventas del Día</h3>
+        <div id="listaVentas"></div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyDbbeyN6DJ2LTbP04x6MJ2CeZ...",
+            authDomain: "pos-bodega-a6a46.firebaseapp.com",
+            projectId: "pos-bodega-a6a46",
+            storageBucket: "pos-bodega-a6a46.firebasestorage.app",
+            messagingSenderId: "899759487177",
+            appId: "1:899759487177:web:b1eec7a5accde...",
+            measurementId: "G-M7ZHTQS4KT"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let tasa = 1;
+        let carrito = [];
+        let productosData = [];
+
+        // Cambiar pestañas
+        function openTab(name) {
+            document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(name).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        // TASA
+        db.collection("config").doc("moneda").onSnapshot(doc => {
+            if(doc.exists) {
+                tasa = doc.data().valor;
+                document.getElementById("tasaInput").value = tasa;
+                actualizarTotales();
+            }
+        });
+
+        async function guardarTasa() {
+            const v = document.getElementById("tasaInput").value;
+            await db.collection("config").doc("moneda").set({ valor: parseFloat(v) });
+            alert("Tasa actualizada");
+        }
+
+        // INVENTARIO
+        db.collection("productos").onSnapshot(snap => {
+            const select = document.getElementById("selectProducto");
+            const lista = document.getElementById("listaStock");
+            select.innerHTML = '<option value="">-- Seleccione --</option>';
+            lista.innerHTML = '';
+            productosData = [];
+
+            snap.forEach(doc => {
+                const p = doc.data();
+                productosData.push({id: doc.id, ...p});
+                
+                // Llenar select de ventas
+                select.innerHTML += `<option value="${doc.id}">${p.nombre} ($${p.precio})</option>`;
+                
+                // Llenar lista de inventario
+                lista.innerHTML += `
+                    <div class="card">
+                        <b>${p.nombre}</b><br>
+                        Precio: $${p.precio} | Stock: ${p.stock}<br>
+                        <button class="btn-blue" style="width:45%" onclick="cargarEditar('${doc.id}', '${p.nombre}', ${p.precio}, ${p.stock})">Editar</button>
+                        <button class="btn-red" style="width:45%" onclick="eliminarProducto('${doc.id}')">Borrar</button>
+                    </div>
+                `;
+            });
+        });
+
+        async function guardarProducto() {
+            const id = document.getElementById("editId").value;
+            const n = document.getElementById("nombreP").value;
+            const p = document.getElementById("precioP").value;
+            const s = document.getElementById("stockP").value;
+
+            const data = { nombre: n, precio: parseFloat(p), stock: parseInt(s) };
+
+            if(id) {
+                await db.collection("productos").doc(id).update(data);
+                document.getElementById("editId").value = '';
+                document.getElementById("btnGuardar").innerText = "Guardar Producto";
+            } else {
+                await db.collection("productos").add(data);
+            }
+            limpiarFormInventario();
+        }
+
+        function cargarEditar(id, n, p, s) {
+            document.getElementById("editId").value = id;
+            document.getElementById("nombreP").value = n;
+            document.getElementById("precioP").value = p;
+            document.getElementById("stockP").value = s;
+            document.getElementById("btnGuardar").innerText = "Actualizar Cambios";
+            openTab('inventario');
+        }
+
+        async function eliminarProducto(id) {
+            if(confirm("¿Seguro quieres borrar este artículo?")) {
+                await db.collection("productos").doc(id).delete();
+            }
+        }
+
+        // CARRITO DE VENTAS
+        function agregarAlCarrito() {
+            const id = document.getElementById("selectProducto").value;
+            if(!id) return;
+            const prod = productosData.find(p => p.id === id);
+            
+            if(prod.stock <= 0) return alert("¡Sin stock!");
+
+            carrito.push(prod);
+            dibujarCarrito();
+            document.getElementById("selectProducto").value = "";
+        }
+
+        function dibujarCarrito() {
+            const div = document.getElementById("carritoItems");
+            div.innerHTML = '';
+            carrito.forEach((p, index) => {
+                div.innerHTML += `
+                    <div class="item-lista">
+                        <span>${p.nombre}</span>
+                        <span>$${p.precio} <button class="btn-red" style="width:3
     <div class="card">
         <h3>🛒 Inventario</h3>
         <div id="lista">Cargando...</div>
