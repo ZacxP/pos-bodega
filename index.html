@@ -10,9 +10,10 @@
         body { background: #121212; color: white; font-family: sans-serif; padding: 20px; }
         .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #333; }
         input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; background: #2c2c2c; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; }
+        button { width: 100%; padding: 15px; background: #007bff; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .btn-venta { background: #28a745; margin-top: 10px; }
         .producto { border-bottom: 1px solid #333; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+        .precio-bs { color: #28a745; font-weight: bold; font-size: 1.1em; }
     </style>
 </head>
 <body>
@@ -34,6 +35,85 @@
     </div>
 
     <div class="card">
+        <h3>🛒 Inventario</h3>
+        <div id="lista">Cargando...</div>
+    </div>
+
+    <script>
+        // Configuración de tu Firebase desde tus capturas
+        const firebaseConfig = {
+            apiKey: "AIzaSyDbbeyN6DJ2LTbP04x6MJ2CeZ...",
+            authDomain: "pos-bodega-a6a46.firebaseapp.com",
+            projectId: "pos-bodega-a6a46",
+            storageBucket: "pos-bodega-a6a46.firebasestorage.app",
+            messagingSenderId: "899759487177",
+            appId: "1:899759487177:web:b1eec7a5accde...",
+            measurementId: "G-M7ZHTQS4KT"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let tasa = 1;
+
+        db.collection("config").doc("moneda").onSnapshot(doc => {
+            if(doc.exists) {
+                tasa = doc.data().valor;
+                document.getElementById("tasaInput").value = tasa;
+            }
+        });
+
+        async function guardarTasa() {
+            const v = document.getElementById("tasaInput").value;
+            await db.collection("config").doc("moneda").set({ valor: parseFloat(v) });
+            alert("Tasa actualizada ✅");
+        }
+
+        async function agregarProducto() {
+            const n = document.getElementById("nombreP").value;
+            const p = document.getElementById("precioP").value;
+            const s = document.getElementById("stockP").value;
+            if(!n || !p || !s) return alert("Llena todos los campos");
+            
+            await db.collection("productos").add({
+                nombre: n,
+                precio: parseFloat(p),
+                stock: parseInt(s)
+            });
+            alert("¡Producto agregado!");
+            document.getElementById("nombreP").value = "";
+            document.getElementById("precioP").value = "";
+            document.getElementById("stockP").value = "";
+        }
+
+        db.collection("productos").onSnapshot(snap => {
+            const lista = document.getElementById("lista");
+            lista.innerHTML = "";
+            snap.forEach(doc => {
+                const prod = doc.data();
+                // Formato corregido para Venezuela (Punto para miles, coma para decimales)
+                const precioBsFormat = (prod.precio * tasa).toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                
+                lista.innerHTML += `
+                    <div class="producto">
+                        <div>
+                            <b>${prod.nombre}</b><br>
+                            $${prod.precio.toFixed(2)} | <span class="precio-bs">Bs. ${precioBsFormat}</span><br>
+                            Stock: ${prod.stock}
+                        </div>
+                        <button class="btn-venta" style="width:80px" onclick="vender('${doc.id}', ${prod.stock})">Vender</button>
+                    </div>
+                `;
+            });
+        });
+
+        async function vender(id, stockActual) {
+            if(stockActual <= 0) return alert("Sin existencias en stock");
+            await db.collection("productos").doc(id).update({ stock: stockActual - 1 });
+        }
+    </script>
+</body>
+</html>
         <h3>🛒 Inventario</h3>
         <div id="lista">Cargando...</div>
     </div>
