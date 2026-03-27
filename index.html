@@ -7,46 +7,49 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
-        body { background: #121212; color: white; font-family: sans-serif; margin: 0; padding-bottom: 70px; }
+        body { background: #121212; color: white; font-family: sans-serif; margin: 0; padding-bottom: 20px; }
         .tabs { display: flex; background: #1e1e1e; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #333; }
-        .tab-btn { flex: 1; padding: 15px; border: none; background: none; color: #888; font-weight: bold; cursor: pointer; }
-        .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: none; color: #888; font-weight: bold; cursor: pointer; text-align: center; }
+        .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; background: #252525; }
         .content { padding: 20px; display: none; }
         .content.active { display: block; }
         .card { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #333; }
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; background: #2c2c2c; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 5px; border: none; background: #2c2c2c; color: white; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 5px; font-size: 16px; }
         .btn-blue { background: #007bff; color: white; }
         .btn-green { background: #28a745; color: white; }
-        .btn-red { background: #dc3545; color: white; margin-top: 5px; }
-        .item-lista { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #333; }
-        .total-box { font-size: 1.2em; border-top: 2px solid #007bff; padding-top: 10px; margin-top: 10px; }
-        .badge { background: #333; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; }
+        .btn-red { background: #dc3545; color: white; }
+        .item-carrito { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #333; }
+        .total-box { font-size: 1.3em; border-top: 2px solid #007bff; padding-top: 10px; margin-top: 15px; font-weight: bold; }
+        .precio-bs { color: #28a745; }
+        .badge { background: #333; padding: 3px 8px; border-radius: 5px; font-size: 0.8em; color: #aaa; }
     </style>
 </head>
 <body>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="openTab('vender')">VENTA</button>
-        <button class="tab-btn" onclick="openTab('inventario')">STOCK</button>
-        <button class="tab-btn" onclick="openTab('tasa')">TASA</button>
-        <button class="tab-btn" onclick="openTab('historial')">CIERRE</button>
+        <div id="btn-vender" class="tab-btn active" onclick="openTab('vender')">VENTA</div>
+        <div id="btn-inventario" class="tab-btn" onclick="openTab('inventario')">STOCK</div>
+        <div id="btn-tasa" class="tab-btn" onclick="openTab('tasa')">TASA</div>
+        <div id="btn-historial" class="tab-btn" onclick="openTab('historial')">CIERRE</div>
     </div>
 
     <div id="vender" class="content active">
         <div class="card">
             <h3>🛒 Nueva Venta</h3>
             <label>Seleccionar Producto:</label>
-            <select id="selectProducto" onchange="agregarAlCarrito()"></select>
+            <select id="selectProducto" onchange="agregarAlCarrito()">
+                <option value="">Cargando productos...</option>
+            </select>
             
             <div id="carritoItems"></div>
             
             <div class="total-box">
                 <div>Total $: <span id="totalUSD">0.00</span></div>
-                <div style="color: #28a745;">Total Bs: <span id="totalBS">0.00</span></div>
+                <div class="precio-bs">Total Bs: <span id="totalBS">0.00</span></div>
             </div>
             <button class="btn-green" onclick="finalizarVenta()" style="margin-top:20px">REGISTRAR VENTA</button>
-            <button class="btn-red" onclick="vaciarCarrito()">Vaciar Carrito</button>
+            <button class="btn-red" onclick="vaciarCarrito()" style="background:#444; margin-top:10px">Vaciar Carrito</button>
         </div>
     </div>
 
@@ -54,9 +57,9 @@
         <div class="card">
             <h3>📦 Agregar/Editar Producto</h3>
             <input type="hidden" id="editId">
-            <input type="text" id="nombreP" placeholder="Nombre (Ej: Arroz 1kg)">
-            <input type="number" id="precioP" step="0.01" placeholder="Precio USD $">
-            <input type="number" id="stockP" placeholder="Stock Actual">
+            <input type="text" id="nombreP" placeholder="Nombre del Producto">
+            <input type="number" id="precioP" step="0.01" placeholder="Precio en USD $">
+            <input type="number" id="stockP" placeholder="Cantidad en Stock">
             <button class="btn-blue" id="btnGuardar" onclick="guardarProducto()">Guardar Producto</button>
         </div>
         <h3>📋 Lista de Artículos</h3>
@@ -73,12 +76,12 @@
     </div>
 
     <div id="historial" class="content">
-        <h3>📄 Ventas del Día</h3>
+        <h3>📄 Últimas 20 Ventas</h3>
         <div id="listaVentas"></div>
     </div>
 
     <script>
-        // CONFIGURACIÓN FIREBASE
+        // CONFIGURACIÓN FIREBASE (Tus datos reales)
         const firebaseConfig = {
             apiKey: "AIzaSyDbbeyN6DJ2LTbP04x6MJ2CeZ...",
             authDomain: "pos-bodega-a6a46.firebaseapp.com",
@@ -96,12 +99,21 @@
         let carrito = [];
         let productosData = [];
 
-        // Cambiar pestañas
+        // FUNCIÓN CORREGIDA PARA CAMBIAR PESTAÑAS
         function openTab(name) {
-            document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(name).classList.add('active');
-            event.currentTarget.classList.add('active');
+            // Ocultar todos los contenidos
+            const contenidos = document.getElementsByClassName('content');
+            for (let i = 0; i < contenidos.length; i++) {
+                contenidos[i].style.display = 'none';
+            }
+            // Quitar clase active de todos los botones
+            const botones = document.getElementsByClassName('tab-btn');
+            for (let i = 0; i < botones.length; i++) {
+                botones[i].classList.remove('active');
+            }
+            // Mostrar el actual
+            document.getElementById(name).style.display = 'block';
+            document.getElementById('btn-' + name).classList.add('active');
         }
 
         // TASA
@@ -115,15 +127,16 @@
 
         async function guardarTasa() {
             const v = document.getElementById("tasaInput").value;
+            if(!v) return alert("Ingresa una tasa");
             await db.collection("config").doc("moneda").set({ valor: parseFloat(v) });
-            alert("Tasa actualizada");
+            alert("Tasa actualizada ✅");
         }
 
-        // INVENTARIO
+        // LEER PRODUCTOS Y LLENAR SELECT
         db.collection("productos").onSnapshot(snap => {
             const select = document.getElementById("selectProducto");
             const lista = document.getElementById("listaStock");
-            select.innerHTML = '<option value="">-- Seleccione --</option>';
+            select.innerHTML = '<option value="">-- Toque para elegir --</option>';
             lista.innerHTML = '';
             productosData = [];
 
@@ -131,16 +144,18 @@
                 const p = doc.data();
                 productosData.push({id: doc.id, ...p});
                 
-                // Llenar select de ventas
-                select.innerHTML += `<option value="${doc.id}">${p.nombre} ($${p.precio})</option>`;
+                select.innerHTML += `<option value="${doc.id}">${p.nombre} ($${p.precio.toFixed(2)})</option>`;
                 
-                // Llenar lista de inventario
+                const precioBs = (p.precio * tasa).toLocaleString('de-DE', {minimumFractionDigits:2});
                 lista.innerHTML += `
                     <div class="card">
                         <b>${p.nombre}</b><br>
-                        Precio: $${p.precio} | Stock: ${p.stock}<br>
-                        <button class="btn-blue" style="width:45%" onclick="cargarEditar('${doc.id}', '${p.nombre}', ${p.precio}, ${p.stock})">Editar</button>
-                        <button class="btn-red" style="width:45%" onclick="eliminarProducto('${doc.id}')">Borrar</button>
+                        Precio: $${p.precio.toFixed(2)} | Bs. ${precioBs}<br>
+                        Stock: ${p.stock}<br>
+                        <div style="display:flex; gap:10px">
+                            <button class="btn-blue" onclick="cargarEditar('${doc.id}', '${p.nombre}', ${p.precio}, ${p.stock})">Editar</button>
+                            <button class="btn-red" onclick="eliminarProducto('${doc.id}')">Borrar</button>
+                        </div>
                     </div>
                 `;
             });
@@ -152,6 +167,8 @@
             const p = document.getElementById("precioP").value;
             const s = document.getElementById("stockP").value;
 
+            if(!n || !p || !s) return alert("Llena todos los campos");
+
             const data = { nombre: n, precio: parseFloat(p), stock: parseInt(s) };
 
             if(id) {
@@ -161,7 +178,10 @@
             } else {
                 await db.collection("productos").add(data);
             }
-            limpiarFormInventario();
+            document.getElementById("nombreP").value = "";
+            document.getElementById("precioP").value = "";
+            document.getElementById("stockP").value = "";
+            alert("Guardado!");
         }
 
         function cargarEditar(id, n, p, s) {
@@ -179,17 +199,17 @@
             }
         }
 
-        // CARRITO DE VENTAS
+        // LÓGICA DEL CARRITO
         function agregarAlCarrito() {
             const id = document.getElementById("selectProducto").value;
             if(!id) return;
             const prod = productosData.find(p => p.id === id);
             
-            if(prod.stock <= 0) return alert("¡Sin stock!");
+            if(prod.stock <= 0) return alert("¡No queda stock!");
 
             carrito.push(prod);
             dibujarCarrito();
-            document.getElementById("selectProducto").value = "";
+            document.getElementById("selectProducto").value = ""; 
         }
 
         function dibujarCarrito() {
@@ -197,165 +217,78 @@
             div.innerHTML = '';
             carrito.forEach((p, index) => {
                 div.innerHTML += `
-                    <div class="item-lista">
+                    <div class="item-carrito">
                         <span>${p.nombre}</span>
-                        <span>$${p.precio} <button class="btn-red" style="width:3
-    <div class="card">
-        <h3>🛒 Inventario</h3>
-        <div id="lista">Cargando...</div>
-    </div>
-
-    <script>
-        // Configuración de tu Firebase desde tus capturas
-        const firebaseConfig = {
-            apiKey: "AIzaSyDbbeyN6DJ2LTbP04x6MJ2CeZ...",
-            authDomain: "pos-bodega-a6a46.firebaseapp.com",
-            projectId: "pos-bodega-a6a46",
-            storageBucket: "pos-bodega-a6a46.firebasestorage.app",
-            messagingSenderId: "899759487177",
-            appId: "1:899759487177:web:b1eec7a5accde...",
-            measurementId: "G-M7ZHTQS4KT"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        let tasa = 1;
-
-        db.collection("config").doc("moneda").onSnapshot(doc => {
-            if(doc.exists) {
-                tasa = doc.data().valor;
-                document.getElementById("tasaInput").value = tasa;
-            }
-        });
-
-        async function guardarTasa() {
-            const v = document.getElementById("tasaInput").value;
-            await db.collection("config").doc("moneda").set({ valor: parseFloat(v) });
-            alert("Tasa actualizada ✅");
-        }
-
-        async function agregarProducto() {
-            const n = document.getElementById("nombreP").value;
-            const p = document.getElementById("precioP").value;
-            const s = document.getElementById("stockP").value;
-            if(!n || !p || !s) return alert("Llena todos los campos");
-            
-            await db.collection("productos").add({
-                nombre: n,
-                precio: parseFloat(p),
-                stock: parseInt(s)
+                        <span>$${p.precio.toFixed(2)} <button class="btn-red" style="width:30px; padding:2px; display:inline" onclick="quitarDelCarrito(${index})">X</button></span>
+                    </div>
+                `;
             });
-            alert("¡Producto agregado!");
-            document.getElementById("nombreP").value = "";
-            document.getElementById("precioP").value = "";
-            document.getElementById("stockP").value = "";
+            actualizarTotales();
         }
 
-        db.collection("productos").onSnapshot(snap => {
-            const lista = document.getElementById("lista");
-            lista.innerHTML = "";
+        function actualizarTotales() {
+            const totalUSD = carrito.reduce((sum, p) => sum + p.precio, 0);
+            document.getElementById("totalUSD").innerText = totalUSD.toFixed(2);
+            document.getElementById("totalBS").innerText = (totalUSD * tasa).toLocaleString('de-DE', {minimumFractionDigits:2});
+        }
+
+        function quitarDelCarrito(index) {
+            carrito.splice(index, 1);
+            dibujarCarrito();
+        }
+
+        function vaciarCarrito() {
+            carrito = [];
+            dibujarCarrito();
+        }
+
+        async function finalizarVenta() {
+            if(carrito.length === 0) return alert("El carrito está vacío");
+
+            const totalVenta = carrito.reduce((sum, p) => sum + p.precio, 0);
+            const fechaActual = new Date().toLocaleString();
+
+            try {
+                // Registrar venta
+                await db.collection("ventas").add({
+                    productos: carrito.map(i => i.nombre),
+                    totalUSD: totalVenta,
+                    tasaUsada: tasa,
+                    fecha: fechaActual
+                });
+
+                // Descontar Stock
+                for(let p of carrito) {
+                    const ref = db.collection("productos").doc(p.id);
+                    const snapshot = await ref.get();
+                    const nuevoStock = snapshot.data().stock - 1;
+                    await ref.update({ stock: nuevoStock });
+                }
+
+                alert("✅ Venta registrada");
+                vaciarCarrito();
+            } catch(e) {
+                alert("Error al vender: " + e);
+            }
+        }
+
+        // MOSTRAR CIERRE / HISTORIAL
+        db.collection("ventas").orderBy("fecha", "desc").limit(20).onSnapshot(snap => {
+            const div = document.getElementById("listaVentas");
+            div.innerHTML = '';
             snap.forEach(doc => {
-                const prod = doc.data();
-                // Formato corregido para Venezuela (Punto para miles, coma para decimales)
-                const precioBsFormat = (prod.precio * tasa).toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                
-                lista.innerHTML += `
-                    <div class="producto">
-                        <div>
-                            <b>${prod.nombre}</b><br>
-                            $${prod.precio.toFixed(2)} | <span class="precio-bs">Bs. ${precioBsFormat}</span><br>
-                            Stock: ${prod.stock}
-                        </div>
-                        <button class="btn-venta" style="width:80px" onclick="vender('${doc.id}', ${prod.stock})">Vender</button>
+                const v = doc.data();
+                const totalBs = (v.totalUSD * v.tasaUsada).toLocaleString('de-DE', {minimumFractionDigits:2});
+                div.innerHTML += `
+                    <div class="card" style="font-size:0.9em">
+                        <span class="badge">${v.fecha}</span><br>
+                        <strong>${v.productos.join(", ")}</strong><br>
+                        Total: $${v.totalUSD.toFixed(2)} | Bs. ${totalBs}
                     </div>
                 `;
             });
         });
-
-        async function vender(id, stockActual) {
-            if(stockActual <= 0) return alert("Sin existencias en stock");
-            await db.collection("productos").doc(id).update({ stock: stockActual - 1 });
-        }
     </script>
 </body>
 </html>
-        <h3>🛒 Inventario</h3>
-        <div id="lista">Cargando...</div>
-    </div>
-
-    <script>
-        // 👇 AQUÍ PEGA TUS DATOS DE LA FOTO 1001062712.jpg
-        const firebaseConfig = {
-            apiKey: "AIzaSyDbbeyN6DJ2LTbP04x6MJ2CeZ...",
-            authDomain: "pos-bodega-a6a46.firebaseapp.com",
-            projectId: "pos-bodega-a6a46",
-            storageBucket: "pos-bodega-a6a46.firebasestorage.app",
-            messagingSenderId: "899759487177",
-            appId: "1:899759487177:web:b1eec7a5accde...",
-            measurementId: "G-M7ZHTQS4KT"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        let tasa = 1;
-
-        // Leer tasa en tiempo real
-        db.collection("config").doc("moneda").onSnapshot(doc => {
-            if(doc.exists) {
-                tasa = doc.data().valor;
-                document.getElementById("tasaInput").value = tasa;
-            }
-        });
-
-        async function guardarTasa() {
-            const v = document.getElementById("tasaInput").value;
-            await db.collection("config").doc("moneda").set({ valor: parseFloat(v) });
-            alert("Tasa actualizada para todos");
-        }
-
-        async function agregarProducto() {
-            const n = document.getElementById("nombreP").value;
-            const p = document.getElementById("precioP").value;
-            const s = document.getElementById("stockP").value;
-            if(!n || !p || !s) return alert("Llena todo");
-            
-            await db.collection("productos").add({
-                nombre: n,
-                precio: parseFloat(p),
-                stock: parseInt(s)
-            });
-            alert("Agregado!");
-            document.getElementById("nombreP").value = "";
-            document.getElementById("precioP").value = "";
-            document.getElementById("stockP").value = "";
-        }
-
-        // Leer productos
-        db.collection("productos").onSnapshot(snap => {
-            const lista = document.getElementById("lista");
-            lista.innerHTML = "";
-            snap.forEach(doc => {
-                const prod = doc.data();
-                const precioBs = (prod.precio * tasa).toFixed(2);
-                lista.innerHTML += `
-                    <div class="producto">
-                        <div>
-                            <b>${prod.nombre}</b><br>
-                            $${prod.precio} | Bs. ${precioBs}<br>
-                            Stock: ${prod.stock}
-                        </div>
-                        <button class="btn-venta" style="width:80px" onclick="vender('${doc.id}', ${prod.stock})">Vender</button>
-                    </div>
-                `;
-            });
-        });
-
-        async function vender(id, stockActual) {
-            if(stockActual <= 0) return alert("Sin stock");
-            await db.collection("productos").doc(id).update({ stock: stockActual - 1 });
-        }
-    </script>
-</body>
-</html>
+ 
