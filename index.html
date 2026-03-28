@@ -7,30 +7,37 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
-        body { background: #121212; color: white; font-family: sans-serif; margin: 0; padding-bottom: 100px; }
+        body { background: #121212; color: white; font-family: sans-serif; margin: 0; padding-bottom: 110px; }
         .tabs { display: flex; background: #1e1e1e; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #333; }
         .tab-btn { flex: 1; padding: 15px; border: none; background: none; color: #888; font-weight: bold; cursor: pointer; text-align: center; font-size: 13px; }
         .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; background: #252525; }
         .content { padding: 10px; display: none; }
         .content.active { display: block; }
 
-        .view-controls { display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; margin-bottom: 10px; }
-        .view-btn { background: #333; border: 1px solid #444; color: white; padding: 6px 12px; border-radius: 6px; font-size: 12px; }
-        .view-btn.active { background: #007bff; border-color: #007bff; }
-
+        /* GRID COMPACTO */
         .productos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .prod-btn { background: #2a2a2a; color: white; aspect-ratio: 1 / 1.1; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 5px; cursor: pointer; border: 1px solid #333; position: relative; }
-        .prod-btn .badge { position: absolute; top: 5px; right: 5px; background: #555; font-size: 9px; padding: 2px 5px; border-radius: 4px; }
-        .prod-btn .name { font-weight: bold; font-size: 11px; margin-bottom: 4px; }
+        .prod-btn .badge { position: absolute; top: 4px; right: 4px; background: #007bff; font-size: 9px; padding: 2px 5px; border-radius: 4px; }
+        .prod-btn .name { font-weight: bold; font-size: 11px; margin-bottom: 3px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         .prod-btn .bs { font-size: 10px; color: #28a745; font-weight: bold; }
 
-        .stock-item { background: #1e1e1e; padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .item-info b { display: block; font-size: 1.1em; }
-        .item-info span { color: #888; font-size: 0.9em; }
-        .agotado { border-left: 4px solid #ff4444 !important; opacity: 0.8; }
-
+        /* BARRA DE COBRO MEJORADA */
         .ticket-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #1e1e1e; border-top: 2px solid #333; padding: 12px 15px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; z-index: 150; }
-        .btn-cobrar { background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; }
+        .total-info { flex: 1; cursor: pointer; }
+        .total-text { font-size: 1.1em; font-weight: bold; }
+        .total-bs { color: #28a745; font-size: 0.9em; font-weight: bold; }
+        .btn-cobrar { background: #28a745; color: white; border: none; padding: 12px 18px; border-radius: 8px; font-weight: bold; margin-left: 10px; }
+        .btn-vaciar { background: #444; color: #ccc; border: none; padding: 12px 12px; border-radius: 8px; font-size: 1.2em; }
+
+        /* MODAL DE REVISIÓN */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: #1e1e1e; width: 90%; max-width: 400px; border-radius: 15px; padding: 20px; max-height: 80vh; overflow-y: auto; }
+        .item-carrito { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #333; }
+        .btn-quitar { color: #ff4444; background: none; border: none; font-size: 1.3em; font-weight: bold; padding: 0 10px; }
+
+        /* STOCK */
+        .stock-item { background: #1e1e1e; padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
         input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #2c2c2c; color: white; box-sizing: border-box; }
         .main-btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-blue { background: #007bff; color: white; }
@@ -46,53 +53,59 @@
     </div>
 
     <div id="vender" class="content active">
-        <div class="view-controls">
-            <span style="font-size: 14px; font-weight: bold;">En Mostrador</span>
-            <small id="statusTasa" style="color:#28a745;"></small>
-        </div>
+        <div style="padding: 5px 10px; font-size: 13px; color: #888;">Toca el total para ver o editar la lista</div>
         <div id="gridProductos" class="productos-grid"></div>
     </div>
 
     <div id="stock" class="content">
         <div style="background:#1e1e1e; padding:15px; border-radius:10px; margin-bottom:20px;">
             <h3>📦 Nuevo Producto</h3>
-            <input type="text" id="nombreP" placeholder="Nombre (Ej: Arroz)">
+            <input type="text" id="nombreP" placeholder="Nombre (Ej: Jabón)">
             <input type="number" id="precioP" step="0.01" placeholder="Precio USD $">
             <input type="number" id="stockP" placeholder="Cantidad">
-            <button class="main-btn btn-blue" onclick="guardarProducto()">Guardar en Inventario</button>
+            <button class="main-btn btn-blue" onclick="guardarProducto()">Guardar</button>
         </div>
-        
-        <h3 style="color: #ffbb33;">🛒 Por Agotarse / Sin Stock</h3>
-        <div id="listaAgotados" style="margin-bottom:20px;"></div>
-
-        <h3 style="color: #007bff;">📋 Inventario Disponible</h3>
+        <h3 style="color: #ff4444;">🚨 Agotados</h3>
+        <div id="listaAgotados"></div>
+        <h3 style="color: #007bff;">📋 Disponible</h3>
         <div id="listaInventario"></div>
     </div>
 
     <div id="tasa" class="content">
-        <div style="background:#1e1e1e; padding:15px; border-radius:10px;">
-            <h3>💹 Configurar Tasa (Bs.)</h3>
-            <input type="number" id="tasaInput" step="0.01">
-            <button class="main-btn btn-blue" onclick="actualizarTasa()">Actualizar Tasa</button>
-        </div>
+        <h3>💹 Tasa del día (Bs.)</h3>
+        <input type="number" id="tasaInput" step="0.01">
+        <button class="main-btn btn-blue" onclick="actualizarTasa()">Actualizar</button>
     </div>
 
     <div id="cierre" class="content">
-        <h3>📄 Registro de Ventas</h3>
+        <h3>📄 Ventas Recientes</h3>
         <div id="historialVentas"></div>
     </div>
 
     <div id="ticketBar" class="ticket-bar" style="display:none;">
-        <div class="total-info">
-            <div style="font-size:1.1em; font-weight:bold;">Total: $<span id="totalUSD">0.00</span></div>
-            <div id="totalBS" style="color:#28a745; font-weight:bold;">Bs 0,00</div>
+        <button class="btn-vaciar" onclick="confirmarVaciar()">🗑️</button>
+        <div class="total-info" onclick="toggleModal()">
+            <div class="total-text">Total: $<span id="totalUSD">0.00</span></div>
+            <div id="totalBS" class="total-bs">Bs 0,00</div>
+            <small style="color:#888;">Ver lista (<span id="countItems">0</span>)</small>
         </div>
         <button class="btn-cobrar" onclick="finalizarVenta()">COBRAR</button>
     </div>
 
+    <div id="modalCarrito" class="modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:10px;">
+                <h3 style="margin:0;">Lista Actual</h3>
+                <button onclick="toggleModal()" style="background:none; border:none; color:white; font-size:1.5em;">×</button>
+            </div>
+            <div id="itemsCarrito" style="margin-top:15px;"></div>
+            <button class="main-btn btn-blue" onclick="toggleModal()">Volver a Productos</button>
+        </div>
+    </div>
+
     <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyDbbeyN6DJ2LTbP04x6MJ2CeZ...", // Asegúrate de que esté completa
+            apiKey: "AIzaSyDbbeyN6DJ2LTbP04x6MJ2CeZ...", // REEMPLAZA CON LA TUYA
             authDomain: "pos-bodega-a6a46.firebaseapp.com",
             projectId: "pos-bodega-a6a46",
             storageBucket: "pos-bodega-a6a46.firebasestorage.app",
@@ -119,7 +132,6 @@
             if(doc.exists) {
                 tasaGlobal = doc.data().valor;
                 document.getElementById("tasaInput").value = tasaGlobal;
-                document.getElementById("statusTasa").innerText = "Tasa: " + tasaGlobal;
                 cargarDatos();
             }
         });
@@ -136,16 +148,13 @@
                 const listaInv = document.getElementById("listaInventario");
                 const listaAgotados = document.getElementById("listaAgotados");
                 
-                grid.innerHTML = "";
-                listaInv.innerHTML = "";
-                listaAgotados.innerHTML = "";
+                grid.innerHTML = ""; listaInv.innerHTML = ""; listaAgotados.innerHTML = "";
 
                 snap.forEach(doc => {
                     const p = doc.data();
                     const id = doc.id;
                     const precioBs = (p.precio * tasaGlobal).toLocaleString('es-VE', {minimumFractionDigits:2});
 
-                    // 1. Mostrar en VENTA solo si hay stock
                     if(p.stock > 0) {
                         grid.innerHTML += `
                             <div class="prod-btn" onclick="agregarCarrito('${id}', '${p.nombre}', ${p.precio}, ${p.stock})">
@@ -156,105 +165,110 @@
                         `;
                     }
 
-                    // 2. Clasificar en STOCK (Agotados vs Disponibles)
                     const itemHTML = `
                         <div class="stock-item ${p.stock <= 0 ? 'agotado' : ''}">
-                            <div class="item-info">
-                                <b>${p.nombre}</b>
-                                <span>$${p.precio} | Stock: ${p.stock}</span>
-                            </div>
+                            <div><b>${p.nombre}</b><br><small>$${p.precio} | Stock: ${p.stock}</small></div>
                             <div>
-                                <button onclick="editarStock('${id}', ${p.stock})" style="background:#444; color:white; border:none; padding:5px 10px; border-radius:4px; margin-right:5px;">+ Stock</button>
-                                <button onclick="eliminarProd('${id}')" style="color:#ff4444; background:none; border:none;">🗑️</button>
+                                <button onclick="editarStock('${id}', ${p.stock})" style="background:#444; color:white; border:none; padding:5px; border-radius:4px;">+ Stock</button>
+                                <button onclick="eliminarProd('${id}')" style="color:red; background:none; border:none;">🗑️</button>
                             </div>
                         </div>
                     `;
-
-                    if(p.stock <= 0) {
-                        listaAgotados.innerHTML += itemHTML;
-                    } else {
-                        listaInv.innerHTML += itemHTML;
-                    }
+                    if(p.stock <= 0) listaAgotados.innerHTML += itemHTML;
+                    else listaInv.innerHTML += itemHTML;
                 });
             });
         }
 
-        function agregarCarrito(id, nombre, precio, stockActual) {
-            const unidadesEnCarrito = carrito.filter(i => i.id === id).length;
-            if(unidadesEnCarrito >= stockActual) {
-                alert("¡No hay más " + nombre + " en stock!");
-                return;
-            }
-            carrito.push({id, nombre, precio});
+        function agregarCarrito(id, nombre, precio, stockMax) {
+            const yaEnCarrito = carrito.filter(i => i.id === id).length;
+            if(yaEnCarrito >= stockMax) return alert("No hay más stock");
+            
+            carrito.push({idTemp: Date.now(), id, nombre, precio});
             actualizarInterfaz();
         }
 
         function actualizarInterfaz() {
             const bar = document.getElementById("ticketBar");
             const total = carrito.reduce((sum, item) => sum + item.precio, 0);
+            
             bar.style.display = (carrito.length > 0 && document.getElementById('vender').classList.contains('active')) ? "flex" : "none";
             document.getElementById("totalUSD").innerText = total.toFixed(2);
             document.getElementById("totalBS").innerText = "Bs " + (total * tasaGlobal).toLocaleString('es-VE', {minimumFractionDigits:2});
+            document.getElementById("countItems").innerText = carrito.length;
+            dibujarModal();
+        }
+
+        function dibujarModal() {
+            const cont = document.getElementById("itemsCarrito");
+            cont.innerHTML = "";
+            carrito.forEach(item => {
+                cont.innerHTML += `
+                    <div class="item-carrito">
+                        <span>${item.nombre} ($${item.precio})</span>
+                        <button class="btn-quitar" onclick="quitarUno(${item.idTemp})">×</button>
+                    </div>
+                `;
+            });
+        }
+
+        function quitarUno(idTemp) {
+            carrito = carrito.filter(i => i.idTemp !== idTemp);
+            actualizarInterfaz();
+            if(carrito.length === 0) toggleModal();
+        }
+
+        function toggleModal() {
+            document.getElementById("modalCarrito").classList.toggle("active");
+        }
+
+        function confirmarVaciar() {
+            if(confirm("¿Vaciar todo el carrito?")) {
+                carrito = [];
+                actualizarInterfaz();
+            }
         }
 
         async function finalizarVenta() {
-            if(!confirm("¿Confirmar venta y descontar stock?")) return;
-
-            try {
-                // Descontar stock uno por uno
-                for (const item of carrito) {
-                    const ref = db.collection("productos").doc(item.id);
-                    const doc = await ref.get();
-                    if(doc.exists) {
-                        await ref.update({ stock: doc.data().stock - 1 });
-                    }
-                }
-
-                // Guardar registro
-                await db.collection("ventas").add({
-                    totalUSD: carrito.reduce((s, i) => s + i.precio, 0),
-                    fecha: new Date().toLocaleString('es-VE'),
-                    detalle: carrito.map(i => i.nombre).join(", ")
-                });
-
-                alert("Venta procesada ✅");
-                carrito = [];
-                actualizarInterfaz();
-            } catch(e) { alert("Error: " + e); }
+            if(!confirm("¿Finalizar venta?")) return;
+            for (const item of carrito) {
+                const ref = db.collection("productos").doc(item.id);
+                const d = await ref.get();
+                await ref.update({ stock: d.data().stock - 1 });
+            }
+            await db.collection("ventas").add({
+                total: carrito.reduce((s,i) => s+i.precio,0),
+                fecha: new Date().toLocaleString('es-VE'),
+                items: carrito.map(i=>i.nombre).join(", ")
+            });
+            alert("Venta exitosa");
+            carrito = [];
+            actualizarInterfaz();
+            if(document.getElementById("modalCarrito").classList.contains("active")) toggleModal();
         }
 
+        // Funciones de Stock
         async function guardarProducto() {
             const n = document.getElementById("nombreP").value;
             const p = parseFloat(document.getElementById("precioP").value);
             const s = parseInt(document.getElementById("stockP").value);
-            if(!n || isNaN(p)) return alert("Pon nombre y precio");
             await db.collection("productos").add({nombre: n, precio: p, stock: s || 0});
-            document.getElementById("nombreP").value = "";
-            document.getElementById("precioP").value = "";
-            document.getElementById("stockP").value = "";
+            document.getElementById("nombreP").value = ""; document.getElementById("precioP").value = "";
         }
-
         async function editarStock(id, actual) {
-            const nuevo = prompt("¿Cuántas unidades nuevas vas a agregar?", "0");
-            if(nuevo !== null) {
-                const total = parseInt(actual) + parseInt(nuevo);
-                await db.collection("productos").doc(id).update({ stock: total });
-            }
+            const n = prompt("Cantidad a sumar:");
+            if(n) await db.collection("productos").doc(id).update({stock: parseInt(actual) + parseInt(n)});
         }
-
         async function eliminarProd(id) {
-            if(confirm("¿Eliminar definitivamente?")) await db.collection("productos").doc(id).delete();
+            if(confirm("¿Eliminar?")) await db.collection("productos").doc(id).delete();
         }
 
-        db.collection("ventas").orderBy("fecha", "desc").limit(10).onSnapshot(snap => {
-            const div = document.getElementById("historialVentas");
-            div.innerHTML = "";
-            snap.forEach(doc => {
+        db.collection("ventas").orderBy("fecha", "desc").limit(10).onSnapshot(s => {
+            const h = document.getElementById("historialVentas");
+            h.innerHTML = "";
+            s.forEach(doc => {
                 const v = doc.data();
-                div.innerHTML += `<div style="padding:10px; border-bottom:1px solid #333; font-size:0.9em;">
-                    <span style="color:#888;">${v.fecha}</span><br>
-                    <b>$${v.totalUSD.toFixed(2)}</b> - ${v.detalle}
-                </div>`;
+                h.innerHTML += `<div style="padding:10px; border-bottom:1px solid #333;">${v.fecha} - <b>$${v.total.toFixed(2)}</b></div>`;
             });
         });
     </script>
