@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Bodega Pro + Scanner</title>
+    <title>POS Bodega Pro + Historial</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -29,25 +29,24 @@
         .prod-btn .name { font-size: 11px; font-weight: bold; margin-bottom: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .prod-btn .bs { font-size: 10px; color: #28a745; font-weight: bold; }
 
-        /* STOCK ITEMS */
-        .stock-item { background: #1e1e1e; padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .agotado { border-left: 4px solid #ff4444 !important; opacity: 0.8; }
+        /* CIERRE / HISTORIAL */
+        .fecha-grupo { background: #1e1e1e; margin-bottom: 10px; border-radius: 8px; border: 1px solid #333; overflow: hidden; }
+        .fecha-header { background: #252525; padding: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: bold; border-bottom: 1px solid #333; }
+        .venta-detalle { padding: 10px; border-bottom: 1px solid #2a2a2a; font-size: 0.9em; display: flex; justify-content: space-between; align-items: center; }
+        .venta-detalle:last-child { border-bottom: none; }
+        .badge-total { background: #28a745; padding: 2px 8px; border-radius: 10px; font-size: 0.9em; }
 
         /* BARRA INFERIOR */
         .ticket-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #1e1e1e; border-top: 2px solid #333; padding: 12px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; z-index: 150; }
-        .total-info { flex: 1; cursor: pointer; }
-        .total-bs { color: #28a745; font-weight: bold; font-size: 0.9em; }
-
-        /* MODALES */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 200; justify-content: center; align-items: center; }
-        .modal.active { display: flex; }
-        .modal-content { background: #1e1e1e; width: 95%; max-width: 450px; border-radius: 15px; padding: 20px; max-height: 85vh; display: flex; flex-direction: column; }
-        .item-carrito { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #333; }
         
+        /* GENERAL */
         input { width: 100%; padding: 12px; margin: 5px 0; border-radius: 6px; border: 1px solid #333; background: #2c2c2c; color: white; box-sizing: border-box; }
         .main-btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-blue { background: #007bff; color: white; }
         .btn-green { background: #28a745; color: white; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 200; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: #1e1e1e; width: 95%; max-width: 450px; border-radius: 15px; padding: 20px; max-height: 85vh; display: flex; flex-direction: column; }
     </style>
 </head>
 <body>
@@ -80,52 +79,54 @@
             <input type="number" id="stockP" placeholder="Cantidad Inicial">
             <button class="main-btn btn-blue" style="margin-top:10px;" onclick="guardarProducto()">Guardar</button>
         </div>
-        
-        <h3 style="color: #ff4444;">🚨 Sin Stock / Agotados</h3>
+        <h3 style="color: #ff4444;">🚨 Agotados</h3>
         <div id="listaAgotados"></div>
-        <h3 style="color: #007bff; margin-top:20px;">📋 Inventario Disponible</h3>
+        <h3 style="color: #007bff; margin-top:20px;">📋 Inventario</h3>
         <div id="listaInventario"></div>
     </div>
 
     <div id="tasa" class="content">
-        <h3>💹 Tasa del día (Bs.)</h3>
+        <h3>💹 Tasa (Bs.)</h3>
         <input type="number" id="tasaInput" step="0.01">
         <button class="main-btn btn-blue" onclick="actualizarTasa()">Actualizar</button>
     </div>
 
     <div id="cierre" class="content">
-        <h3>📄 Ventas Recientes</h3>
-        <div id="historialVentas"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>📅 Historial por Fecha</h3>
+            <button onclick="borrarTodoElHistorial()" style="background:none; border:none; color:#ff4444; font-size:0.8em;">Borrar Todo</button>
+        </div>
+        <div id="historialContenedor"></div>
     </div>
 
     <div id="ticketBar" class="ticket-bar" style="display:none;">
         <button onclick="confirmarVaciar()" style="background:#333; border:none; color:#888; padding:10px; border-radius:8px;">🗑️</button>
-        <div class="total-info" onclick="toggleModal()" style="padding-left:15px;">
+        <div class="total-info" onclick="toggleModal()" style="padding-left:15px; flex:1;">
             <div style="font-weight:bold;">Total: $<span id="totalUSD">0.00</span></div>
-            <div id="totalBS" class="total-bs">Bs 0,00</div>
-            <small style="color:#007bff;">Ver lista (<span id="countItems">0</span>)</small>
+            <div id="totalBS" style="color:#28a745; font-size:0.9em;">Bs 0,00</div>
         </div>
         <button class="btn-green" style="padding:12px 18px; border:none; border-radius:8px; font-weight:bold;" onclick="finalizarVenta()">COBRAR</button>
     </div>
 
     <div id="modalCarrito" class="modal">
         <div class="modal-content">
-            <h3 style="margin:0; border-bottom:1px solid #333; padding-bottom:10px;">Ticket de Compra</h3>
-            <div id="itemsCarrito" style="overflow-y:auto; flex-grow:1; margin:15px 0;"></div>
-            <div style="background:#252525; padding:15px; border-radius:10px;">
-                <div style="display:flex; justify-content:space-between; font-weight:bold;"><span>TOTAL USD:</span><span id="mTotalUSD"></span></div>
-                <div style="display:flex; justify-content:space-between; color:#28a745; font-size:1.2em; font-weight:bold;"><span>TOTAL Bs:</span><span id="mTotalBS"></span></div>
+            <h3>Ticket</h3>
+            <div id="itemsCarrito" style="overflow-y:auto; flex-grow:1;"></div>
+            <div style="background:#252525; padding:15px; border-radius:10px; margin-top:10px;">
+                <div style="display:flex; justify-content:space-between;"><b>Total USD:</b><span id="mTotalUSD"></span></div>
+                <div style="display:flex; justify-content:space-between; color:#28a745;"><b>Total Bs:</b><span id="mTotalBS"></span></div>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
-                <button class="main-btn" style="background:#444; color:white;" onclick="toggleModal()">⬅ VOLVER</button>
-                <button class="main-btn btn-green" onclick="finalizarVenta()">✅ COBRAR</button>
+                <button class="main-btn" style="background:#444; color:white;" onclick="toggleModal()">VOLVER</button>
+                <button class="main-btn btn-green" onclick="finalizarVenta()">COBRAR</button>
             </div>
         </div>
     </div>
 
     <script>
+        // CONFIG FIREBASE (REEMPLAZA ESTO)
         const firebaseConfig = {
-            apiKey: "AIzaSyDbbeyN6DJ2LTbP04x6MJ2CeZ...", // TU API KEY
+            apiKey: "AIzaSyDbbeyN6DJ2LTbP04x6MJ2CeZ...", 
             authDomain: "pos-bodega-a6a46.firebaseapp.com",
             projectId: "pos-bodega-a6a46",
             storageBucket: "pos-bodega-a6a46.firebasestorage.app",
@@ -149,149 +150,172 @@
             actualizarInterfaz();
         }
 
-        // TASA
         db.collection("config").doc("moneda").onSnapshot(doc => {
-            if(doc.exists) {
-                tasaGlobal = doc.data().valor;
-                document.getElementById("tasaInput").value = tasaGlobal;
-                cargarDatos();
-            }
+            if(doc.exists) { tasaGlobal = doc.data().valor; document.getElementById("tasaInput").value = tasaGlobal; cargarDatos(); }
         });
 
-        async function actualizarTasa() {
-            const v = parseFloat(document.getElementById("tasaInput").value);
-            await db.collection("config").doc("moneda").set({valor: v});
-            alert("Tasa actualizada");
-        }
-
-        // CARGAR DATOS
+        // --- SISTEMA DE VENTAS ---
         function cargarDatos() {
             db.collection("productos").onSnapshot(snap => {
                 const grid = document.getElementById("gridProductos");
                 const listaInv = document.getElementById("listaInventario");
                 const listaAgo = document.getElementById("listaAgotados");
                 grid.innerHTML = ""; listaInv.innerHTML = ""; listaAgo.innerHTML = "";
-
                 snap.forEach(doc => {
-                    const p = doc.data();
-                    const id = doc.id;
+                    const p = doc.data(); const id = doc.id;
                     const pBs = (p.precio * tasaGlobal).toLocaleString('es-VE', {minimumFractionDigits:2});
-
                     if(p.stock > 0) {
                         grid.innerHTML += `<div class="prod-btn" onclick="agregarCarrito('${id}', '${p.nombre}', ${p.precio}, ${p.stock})">
-                            <span class="badge">${p.stock}</span>
-                            <span class="name">${p.nombre}</span>
-                            <span class="bs">Bs ${pBs}</span>
-                        </div>`;
+                            <span class="badge">${p.stock}</span><span class="name">${p.nombre}</span><span class="bs">Bs ${pBs}</span></div>`;
                     }
-
                     const itemHTML = `<div class="stock-item ${p.stock <= 0 ? 'agotado' : ''}">
                         <div><b>${p.nombre}</b><br><small>$${p.precio} | Stock: ${p.stock}</small></div>
-                        <div>
-                            <button onclick="editarStock('${id}', ${p.stock})" style="background:#444; color:white; border:none; padding:8px; border-radius:5px;">+ Stock</button>
-                            <button onclick="eliminarProd('${id}')" style="color:red; background:none; border:none; margin-left:10px;">🗑️</button>
-                        </div>
-                    </div>`;
-
-                    if(p.stock <= 0) listaAgo.innerHTML += itemHTML;
-                    else listaInv.innerHTML += itemHTML;
+                        <div><button onclick="editarStock('${id}', ${p.stock})" style="background:#444; color:white; border:none; padding:8px; border-radius:5px;">+ Stock</button>
+                        <button onclick="eliminarProd('${id}')" style="color:red; background:none; border:none; margin-left:10px;">🗑️</button></div></div>`;
+                    if(p.stock <= 0) listaAgo.innerHTML += itemHTML; else listaInv.innerHTML += itemHTML;
                 });
             });
         }
 
-        // ESCÁNER
-        function activarCamara(modo) {
-            const r = document.getElementById("reader");
-            r.style.display = "block";
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
-                const audio = new Audio('https://www.soundjay.com/button/beep-07.wav');
-                audio.play();
-                if(modo === 'stock') document.getElementById("codigoP").value = text;
-                else buscarPorCodigo(text);
-                html5QrCode.stop(); r.style.display = "none";
-            });
-        }
-
-        function buscarPorCodigo(codigo) {
-            db.collection("productos").where("codigo", "==", codigo).get().then(snap => {
-                if(!snap.empty) {
-                    const d = snap.docs[0];
-                    agregarCarrito(d.id, d.data().nombre, d.data().precio, d.data().stock);
-                    document.getElementById("codigoBusqueda").value = "";
-                } else alert("No encontrado: " + codigo);
-            });
-        }
-
-        // CARRITO
         function agregarCarrito(id, nombre, precio, stockMax) {
             if(carrito.filter(i => i.id === id).length >= stockMax) return alert("Sin stock");
             carrito.push({idTemp: Date.now(), id, nombre, precio});
             actualizarInterfaz();
         }
 
+        async function finalizarVenta() {
+            if(!confirm("¿Cobrar?")) return;
+            const totalUSD = carrito.reduce((s,i)=>s+i.precio,0);
+            const fechaFull = new Date();
+            const fechaDia = fechaFull.toLocaleDateString('es-VE'); // Ej: 21/3/2024
+            const hora = fechaFull.toLocaleTimeString('es-VE', {hour:'2-digit', minute:'2-digit'});
+
+            for(const i of carrito) {
+                const ref = db.collection("productos").doc(i.id);
+                const d = await ref.get();
+                await ref.update({ stock: d.data().stock - 1 });
+            }
+
+            await db.collection("ventas").add({
+                total: totalUSD,
+                fecha: fechaDia,
+                hora: hora,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                detalle: carrito.map(i=>i.nombre).join(", ")
+            });
+
+            alert("Cobrado con éxito");
+            carrito = []; actualizarInterfaz(); if(document.getElementById("modalCarrito").classList.contains("active")) toggleModal();
+        }
+
+        // --- SISTEMA DE HISTORIAL (CIERRE) ---
+        db.collection("ventas").orderBy("timestamp", "desc").onSnapshot(snap => {
+            const cont = document.getElementById("historialContenedor");
+            cont.innerHTML = "";
+            let grupos = {};
+
+            snap.forEach(doc => {
+                const v = doc.data();
+                const dia = v.fecha || "Sin fecha";
+                if(!grupos[dia]) grupos[dia] = { ventas: [], totalDia: 0 };
+                grupos[dia].ventas.push({id: doc.id, ...v});
+                grupos[dia].totalDia += v.total;
+            });
+
+            for(const dia in grupos) {
+                const divDia = document.createElement('div');
+                divDia.className = 'fecha-grupo';
+                divDia.innerHTML = `
+                    <div class="fecha-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                        <span>📅 ${dia}</span>
+                        <div>
+                            <span class="badge-total">$${grupos[dia].totalDia.toFixed(2)}</span>
+                            <button onclick="borrarDia('${dia}')" style="background:none; border:none; color:#ff4444; margin-left:10px;">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="fecha-detalles" style="display:none;">
+                        ${grupos[dia].ventas.map(v => `
+                            <div class="venta-detalle">
+                                <div><small>${v.hora}</small><br>${v.detalle}</div>
+                                <div style="display:flex; align-items:center;">
+                                    <b>$${v.total.toFixed(2)}</b>
+                                    <button onclick="borrarVenta('${v.id}')" style="color:#666; border:none; background:none; margin-left:8px;">×</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                cont.appendChild(divDia);
+            }
+        });
+
+        async function borrarVenta(id) {
+            if(confirm("¿Eliminar esta venta?")) await db.collection("ventas").doc(id).delete();
+        }
+
+        async function borrarDia(fecha) {
+            if(confirm(`¿Borrar todas las ventas del día ${fecha}?`)) {
+                const snap = await db.collection("ventas").where("fecha", "==", fecha).get();
+                const batch = db.batch();
+                snap.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            }
+        }
+
+        async function borrarTodoElHistorial() {
+            if(confirm("⚠️ ¿ESTÁS SEGURO? Se borrará todo el historial de ventas permanentemente.")) {
+                const snap = await db.collection("ventas").get();
+                const batch = db.batch();
+                snap.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            }
+        }
+
+        // --- AUXILIARES ---
         function actualizarInterfaz() {
             const total = carrito.reduce((s, i) => s + i.precio, 0);
             const totalBs = total * tasaGlobal;
             document.getElementById("ticketBar").style.display = (carrito.length > 0 && document.getElementById('vender').classList.contains('active')) ? "flex" : "none";
             document.getElementById("totalUSD").innerText = total.toFixed(2);
             document.getElementById("totalBS").innerText = "Bs " + totalBs.toLocaleString('es-VE', {minimumFractionDigits:2});
-            document.getElementById("countItems").innerText = carrito.length;
-            
-            // Modal
             document.getElementById("mTotalUSD").innerText = "$" + total.toFixed(2);
             document.getElementById("mTotalBS").innerText = "Bs " + totalBs.toLocaleString('es-VE', {minimumFractionDigits:2});
             const cont = document.getElementById("itemsCarrito");
             cont.innerHTML = "";
-            carrito.forEach(i => {
-                const iBs = (i.precio * tasaGlobal).toLocaleString('es-VE', {minimumFractionDigits:2});
-                cont.innerHTML += `<div class="item-carrito">
-                    <div><b>${i.nombre}</b><br><small>$${i.precio.toFixed(2)} | Bs ${iBs}</small></div>
-                    <button onclick="quitarUno(${i.idTemp})" style="color:red; background:none; border:none; font-size:1.2em;">×</button>
-                </div>`;
-            });
-        }
-
-        // ACCIONES
-        async function finalizarVenta() {
-            if(!confirm("¿Finalizar venta?")) return;
-            for(const i of carrito) {
-                const ref = db.collection("productos").doc(i.id);
-                const d = await ref.get();
-                await ref.update({ stock: d.data().stock - 1 });
-            }
-            await db.collection("ventas").add({ total: carrito.reduce((s,i)=>s+i.precio,0), fecha: new Date().toLocaleString('es-VE'), detalle: carrito.map(i=>i.nombre).join(",") });
-            alert("Venta procesada");
-            carrito = []; actualizarInterfaz(); if(document.getElementById("modalCarrito").classList.contains("active")) toggleModal();
-        }
-
-        async function guardarProducto() {
-            const c = document.getElementById("codigoP").value;
-            const n = document.getElementById("nombreP").value;
-            const p = parseFloat(document.getElementById("precioP").value);
-            const s = parseInt(document.getElementById("stockP").value);
-            await db.collection("productos").add({codigo: c, nombre: n, precio: p, stock: s});
-            document.getElementById("codigoP").value = ""; document.getElementById("nombreP").value = "";
-        }
-
-        async function editarStock(id, actual) {
-            const n = prompt("Sumar cantidad:");
-            if(n) await db.collection("productos").doc(id).update({stock: parseInt(actual) + parseInt(n)});
-        }
-
-        async function eliminarProd(id) {
-            if(confirm("¿Eliminar?")) await db.collection("productos").doc(id).delete();
+            carrito.forEach(i => cont.innerHTML += `<div class="item-carrito"><span>${i.nombre}</span><b>$${i.precio.toFixed(2)}</b><button onclick="quitarUno(${i.idTemp})" style="color:red; background:none; border:none;">×</button></div>`);
         }
 
         function toggleModal() { document.getElementById("modalCarrito").classList.toggle("active"); }
-        function confirmarVaciar() { if(confirm("¿Vaciar?")) { carrito = []; actualizarInterfaz(); } }
         function quitarUno(idT) { carrito = carrito.filter(i => i.idTemp !== idT); actualizarInterfaz(); if(carrito.length === 0) toggleModal(); }
+        function confirmarVaciar() { if(confirm("¿Vaciar?")) { carrito = []; actualizarInterfaz(); } }
 
-        db.collection("ventas").orderBy("fecha", "desc").limit(10).onSnapshot(s => {
-            const h = document.getElementById("historialVentas");
-            h.innerHTML = "";
-            s.forEach(doc => { const v = doc.data(); h.innerHTML += `<div style="padding:10px; border-bottom:1px solid #333;">${v.fecha} - <b>$${v.total.toFixed(2)}</b></div>`; });
-        });
+        function activarCamara(modo) {
+            const r = document.getElementById("reader"); r.style.display = "block";
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+                new Audio('https://www.soundjay.com/button/beep-07.wav').play();
+                if(modo === 'stock') document.getElementById("codigoP").value = text; else buscarPorCodigo(text);
+                html5QrCode.stop(); r.style.display = "none";
+            });
+        }
+
+        function buscarPorCodigo(codigo) {
+            db.collection("productos").where("codigo", "==", codigo).get().then(snap => {
+                if(!snap.empty) { const d = snap.docs[0]; agregarCarrito(d.id, d.data().nombre, d.data().precio, d.data().stock); document.getElementById("codigoBusqueda").value = ""; }
+                else alert("No registrado");
+            });
+        }
+
+        async function guardarProducto() {
+            const c = document.getElementById("codigoP").value, n = document.getElementById("nombreP").value, p = parseFloat(document.getElementById("precioP").value), s = parseInt(document.getElementById("stockP").value);
+            await db.collection("productos").add({codigo: c, nombre: n, precio: p, stock: s});
+            document.getElementById("codigoP").value = ""; document.getElementById("nombreP").value = "";
+        }
+        async function editarStock(id, actual) {
+            const n = prompt("Sumar:"); if(n) await db.collection("productos").doc(id).update({stock: parseInt(actual) + parseInt(n)});
+        }
+        async function eliminarProd(id) { if(confirm("¿Eliminar?")) await db.collection("productos").doc(id).delete(); }
+        async function actualizarTasa() { await db.collection("config").doc("moneda").set({valor: parseFloat(document.getElementById("tasaInput").value)}); }
     </script>
 </body>
 </html>
